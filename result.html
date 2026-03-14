@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Official Result</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<style>
+  :root{
+    --bg1:#f6f9ff;
+    --card:#ffffff;
+    --accent:#2563eb;
+    --muted:#6b7280;
+  }
+  body{
+    margin:0;
+    font-family:Inter,system-ui,Arial;
+    background: linear-gradient(180deg,var(--bg1),#e6f0ff);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .card{
+    width:100%;
+    max-width:880px;
+    background:var(--card);
+    border-radius:14px;
+    box-shadow:0 10px 30px rgba(16,24,40,0.08);
+    padding:28px;
+  }
+  .header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+  }
+  .school{
+    display:flex;
+    flex-direction:column;
+  }
+  h1{ margin:0; font-size:20px; color:#0f172a; }
+  .meta{ color:var(--muted); font-size:14px; margin-top:6px; }
+  .result-table{
+    width:100%;
+    margin-top:20px;
+    border-collapse:collapse;
+    font-size:15px;
+  }
+  .result-table th, .result-table td{
+    padding:10px 12px;
+    text-align:left;
+    border-bottom:1px solid #eef2ff;
+  }
+  .result-table th{ color:var(--muted); font-weight:600; font-size:13px; }
+  .summary {
+    display: flex;
+    gap: 15px;
+    margin-top: 15px;
+    align-items: center;
+    flex-wrap: nowrap;
+    border-bottom: 1px solid #d1d5db;
+    padding-bottom: 10px;
+    overflow-x: auto;
+  }
+  .chip {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 8px 10px;
+    box-shadow: 0 3px 8px rgba(16,24,40,0.02);
+    white-space: nowrap;
+  }
+  .chip div:first-child {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .big {
+    font-weight: 700;
+    font-size: 20px;
+    color: #0b1220;
+  }
+  .actions{
+    margin-top:18px;
+    display:flex;
+    gap:10px;
+  }
+  button{
+    padding:10px 20px;
+    border-radius:10px;
+    border:none;
+    cursor:pointer;
+    font-weight:700;
+  }
+  .btn-back{ background:#eef2ff; color:var(--accent); }
+  .btn-print{ background:var(--accent); color:#fff; }
+  @media (max-width:640px){
+    .header{ flex-direction:column; align-items:flex-start; gap:8px; }
+  }
+</style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="header">
+      <div class="school">
+        <h1>Official Exam Result</h1>
+        <div class="meta" id="studentMeta">Loading student...</div>
+      </div>
+      <div class="school-right">
+        <div class="meta" id="statusLabel"></div>
+      </div>
+    </div>
+
+    <table class="result-table" id="resultsTable" aria-live="polite">
+      <thead>
+        <tr>
+          <th>Subject</th>
+          <th>Marks</th>
+          <th>GPA</th>
+          <th>Grade</th>
+        </tr>
+      </thead>
+      <tbody id="resultsBody">
+        <!-- rows inserted here -->
+      </tbody>
+    </table>
+
+    <div class="summary">
+      <div class="chip">
+        <div>Total Subjects</div>
+        <div class="big" id="totalSubjects">0</div>
+      </div>
+      <div class="chip">
+        <div>Overall GPA (avg)</div>
+        <div class="big" id="overallGPA">0.00</div>
+      </div>
+      <div class="chip">
+        <div>Pass Status</div>
+        <div class="big" id="passStatus">—</div>
+      </div>
+      <div class="chip" id="overallLetterGrade">
+        <div>Overall Grade</div>
+        <div class="big">—</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-back" id="backBtn">← Back to Search</button>
+      <button class="btn-print" id="downloadBtn">Download</button>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBHd_LMbxpMbshPjAqgKQwVT96gk2iShZU",
+    authDomain: "result-6567e.firebaseapp.com",
+    projectId: "result-6567e",
+    storageBucket: "result-6567e.firebasestorage.app",
+    messagingSenderId: "620047600761",
+    appId: "1:620047600761:web:bad47a88eb6e125d9e18a8"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  function marksToGPA(m) {
+  if (m === null || m === undefined || m === '') return null;
+  const marks = Number(m);
+  if (isNaN(marks)) return null;
+
+  if (marks >= 90) return 4.0;      // A+
+  if (marks >= 80) return 3.6;      // A
+  if (marks >= 70) return 3.2;      // B+
+  if (marks >= 60) return 2.8;      // B
+  if (marks >= 50) return 2.4;      // C+
+  if (marks >= 40) return 2.0;      // C
+  if (marks >= 35) return 1.6;      // D
+  return 0.0;                       // NG (Fail)
+}
+
+
+  function gpaToLetter(gpa) {
+    if (gpa === null || gpa === undefined) return '—';
+    if (gpa >= 4.0) return 'A+';
+    if (gpa >= 3.6) return 'A';
+    if (gpa >= 3.2) return 'B+';
+    if (gpa >= 2.8) return 'B';
+    if (gpa >= 2.4) return 'C+';
+    if (gpa >= 2.0) return 'C';
+    if (gpa >= 1.6) return 'D';
+    return 'NG';
+  }
+
+  function getQueryParam(name){
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+  }
+
+  const SUBJECTS = [
+    { key: 'english', label: 'English' },
+    { key: 'maths', label: 'Maths' },
+    { key: 'nepali', label: 'Nepali' },
+    { key: 'social', label: 'Social' },
+    { key: 'science', label: 'Science' },
+    { key: 'economics', label: 'Economics (OPT 1)' },
+    { key: 'account', label: 'Account (OPT 2)' },
+    { key: 'computer', label: 'Computer (OPT 2)' }
+  ];
+
+  (async function init(){
+    const id = getQueryParam('id');
+    if (!id) {
+      Swal.fire({
+        icon: 'error',
+        title: 'No Student ID',
+        text: 'Result ID not provided. Redirecting to search.',
+        timer: 2000,
+        willClose: () => window.location.href = 'index.html'
+      });
+      return;
+    }
+
+    try {
+      const docRef = doc(db, 'students', id);
+      const snap = await getDoc(docRef);
+
+      if (!snap.exists()) {
+        Swal.fire('Not Found', 'No record found for Student ID: ' + id, 'warning')
+          .then(()=> window.location.href = 'index.html');
+        return;
+      }
+
+      const data = snap.data();
+      renderStudent(data, id);
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Error', 'Failed to fetch data. Check console for details.', 'error');
+    }
+  })();
+
+  function renderStudent(data, id) {
+    const meta = document.getElementById('studentMeta');
+    const resultsBody = document.getElementById('resultsBody');
+    const totalSubjectsEl = document.getElementById('totalSubjects');
+    const overallGPAEl = document.getElementById('overallGPA');
+    const passStatusEl = document.getElementById('passStatus');
+    const statusLabel = document.getElementById('statusLabel');
+
+    meta.innerHTML = `<strong>${data.name || '—'}</strong> • Student ID: ${data.studentId || id} • Roll No: ${data.rollNo || '—'}`;
+
+    const marks = data.marks || {};
+    const gpas = data.gpa || {};
+
+    resultsBody.innerHTML = ''; // clear previous
+
+    let subjectCount = 0;
+    let gpaSum = 0;
+    let anyFail = false;
+
+    SUBJECTS.forEach(s => {
+      const m = marks[s.key];
+      if (m === null || m === undefined || m === '') return;
+
+      const g = marksToGPA(m);
+      const storedG = (gpas && (gpas[s.key] !== null && gpas[s.key] !== undefined)) ? Number(gpas[s.key]) : g;
+
+      const tr = document.createElement('tr');
+      const tdSub = document.createElement('td'); tdSub.textContent = s.label;
+      const tdMarks = document.createElement('td'); tdMarks.textContent = m;
+      const tdGpa = document.createElement('td'); tdGpa.textContent = (storedG === null) ? '—' : storedG.toFixed(2);
+      const tdGrade = document.createElement('td'); tdGrade.textContent = gpaToLetter(storedG);
+
+      tr.appendChild(tdSub);
+      tr.appendChild(tdMarks);
+      tr.appendChild(tdGpa);
+      tr.appendChild(tdGrade);
+      resultsBody.appendChild(tr);
+
+      if (storedG !== null) {
+        subjectCount++;
+        gpaSum += storedG;
+        if (storedG === 0) anyFail = true;
+      }
+    });
+
+    totalSubjectsEl.textContent = subjectCount;
+    const overall = subjectCount > 0 ? (gpaSum / subjectCount) : 0;
+    overallGPAEl.textContent = overall ? overall.toFixed(2) : '—';
+
+    let gradeChip = document.getElementById('overallLetterGrade');
+    if (!gradeChip) {
+      gradeChip = document.createElement('div');
+      gradeChip.className = 'chip';
+      gradeChip.id = 'overallLetterGrade';
+      gradeChip.innerHTML = `
+        <div>Overall Grade</div>
+        <div class="big"></div>
+      `;
+      document.querySelector('.summary').appendChild(gradeChip);
+    }
+    gradeChip.querySelector('.big').textContent = gpaToLetter(overall);
+
+    const passed = (data.pass !== undefined && data.pass !== null) ? Boolean(data.pass) : !anyFail;
+    passStatusEl.textContent = passed ? 'Pass' : 'Fail';
+    passStatusEl.style.color = passed ? 'green' : 'crimson';
+    statusLabel.textContent = passed ? 'Result: Passed ' : 'Result: Not Passed';
+
+    if (passed) {
+      confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 }});
+      Swal.fire({
+        title: 'Congratulations!',
+        html: `<b>${data.name || 'Student'}</b> — You passed!`,
+        icon: 'success',
+        timer: 2800,
+        showConfirmButton: false,
+      });
+    }
+  }
+
+  document.getElementById('backBtn').addEventListener('click', ()=> window.location.href = 'index.html');
+
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text("Official Exam Result", 14, 20);
+
+    const studentMeta = document.getElementById('studentMeta').textContent;
+    doc.setFontSize(12);
+    doc.text(studentMeta, 14, 30);
+
+    // Table header
+    const headers = [["Subject", "Marks", "GPA", "Grade"]];
+
+    // Collect table rows
+    const data = [];
+    document.querySelectorAll("#resultsBody tr").forEach(row => {
+      const cols = row.querySelectorAll("td");
+      data.push([
+        cols[0].textContent,
+        cols[1].textContent,
+        cols[2].textContent,
+        cols[3].textContent
+      ]);
+    });
+
+    if (doc.autoTable) {
+      doc.autoTable({
+        head: headers,
+        body: data,
+        startY: 40,
+        theme: "striped",
+      });
+    } else {
+      // fallback
+      let y = 40;
+      doc.setFontSize(12);
+      doc.text(headers[0].join(" | "), 14, y);
+      y += 8;
+      data.forEach(row => {
+        doc.text(row.join(" | "), 14, y);
+        y += 8;
+      });
+    }
+
+    let yPos = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 40 + data.length * 10 + 10;
+    const totalSubjects = document.getElementById('totalSubjects').textContent;
+    const overallGPA = document.getElementById('overallGPA').textContent;
+    const overallGrade = document.getElementById('overallLetterGrade')?.querySelector('.big').textContent || "—";
+    const passStatus = document.getElementById('passStatus').textContent;
+
+    doc.text(`Total Subjects: ${totalSubjects}`, 14, yPos);
+    yPos += 8;
+    doc.text(`Overall GPA: ${overallGPA}`, 14, yPos);
+    yPos += 8;
+    doc.text(`Overall Grade: ${overallGrade}`, 14, yPos);
+    yPos += 8;
+    doc.text(` Status: ${passStatus}`, 14, yPos);
+
+    doc.save(`Result_${studentMeta.replace(/[^a-z0-9]/gi, '_')}.pdf`);
+  });
+</script>
+</body>
+</html>

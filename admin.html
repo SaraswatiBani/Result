@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin Panel - Manage Student Results</title>
+<style>
+  /* (your existing styles unchanged) */
+  body {
+    font-family: Arial, sans-serif;
+    background: #eef2ff;
+    margin: 0; padding: 20px;
+    min-height: 100vh;
+  }
+  h1 {
+    text-align: center;
+    color: #2563eb;
+  }
+  form {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    max-width: 600px;
+    margin: 10px auto 30px auto;
+    box-shadow: 0 6px 15px rgba(37, 99, 235, 0.2);
+  }
+  form input[type="text"], form input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+    margin: 8px 0;
+    border-radius: 6px;
+    border: 1px solid #bbb;
+    box-sizing: border-box;
+  }
+  form label {
+    font-weight: bold;
+    margin-top: 12px;
+    display: block;
+  }
+  form button {
+    margin-top: 15px;
+    background: #2563eb;
+    color: white;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  form button:hover {
+    background: #1e40af;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    max-width: 960px;
+    margin: auto;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  }
+  th, td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  th {
+    background: #2563eb;
+    color: white;
+  }
+  tr:hover {
+    background: #f0f7ff;
+  }
+  button.edit-btn, button.delete-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+  }
+  button.edit-btn {
+    background: #3b82f6;
+  }
+  button.delete-btn {
+    background: #ef4444;
+  }
+  .center {
+    text-align: center;
+  }
+</style>
+<!-- Include SweetAlert2 CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+</head>
+<body>
+
+<h1>Admin Panel: Manage Student Results</h1>
+
+<form id="studentForm">
+  <input type="hidden" id="docId" value="" />
+  <label for="studentId">Student ID *</label>
+  <input type="text" id="studentId" placeholder="Enter Student ID" required />
+
+  <label for="name">Name</label>
+  <input type="text" id="name" placeholder="Enter Student Name" />
+
+  <label for="rollNo">Roll No</label>
+  <input type="text" id="rollNo" placeholder="Enter Roll Number" />
+
+  <label for="english">English Marks</label>
+  <input type="number" id="english" min="0" max="100" placeholder="Marks (0-100)" />
+
+  <label for="maths">Maths Marks</label>
+  <input type="number" id="maths" min="0" max="100" placeholder="Marks (0-100)" />
+
+  <label for="nepali">Nepali Marks</label>
+  <input type="number" id="nepali" min="0" max="100" placeholder="Marks (0-100)" />
+
+  <label for="social">Social Marks</label>
+  <input type="number" id="social" min="0" max="100" placeholder="Marks (0-100)" />
+
+  <label for="science">Science Marks</label>
+  <input type="number" id="science" min="0" max="100" placeholder="Marks (0-100)" />
+
+  <label for="Economics">Economics (OPT 1) Marks</label>
+  <input type="number" id="ecommerce" min="0" max="100" placeholder="Marks (0-100)" />
+
+  <label for="account">Account (OPT 2) Marks</label>
+  <input type="number" id="account" min="0" max="100" placeholder="Marks (0-100)" />
+
+  <label for="computer">Computer (OPT 2) Marks</label>
+  <input type="number" id="computer" min="0" max="100" placeholder="Marks (0-50)" />
+
+  <button type="submit" id="submitBtn">Add Student</button>
+</form>
+
+<table aria-label="Student List">
+  <thead>
+    <tr>
+      <th>Student ID</th>
+      <th>Name</th>
+      <th>Roll No</th>
+      <th>Pass</th>
+      <th class="center">Actions</th>
+    </tr>
+  </thead>
+  <tbody id="studentsTableBody">
+    <!-- Students will be listed here -->
+  </tbody>
+</table>
+
+<!-- Include SweetAlert2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script type="module">
+  // Firebase imports
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBHd_LMbxpMbshPjAqgKQwVT96gk2iShZU",
+    authDomain: "result-6567e.firebaseapp.com",
+    projectId: "result-6567e",
+    storageBucket: "result-6567e.firebasestorage.app",
+    messagingSenderId: "620047600761",
+    appId: "1:620047600761:web:bad47a88eb6e125d9e18a8"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const form = document.getElementById('studentForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const studentsTableBody = document.getElementById('studentsTableBody');
+
+  const fields = ['english','maths','nepali','social','science','ecommerce','account','computer'];
+
+function marksToGPA(m) {
+  if (m === null || m === undefined || m === '') return null;
+  const marks = Number(m);
+  if (isNaN(marks)) return null;
+
+  if (marks >= 90) return 4.0;      // A+
+  if (marks >= 80) return 3.6;      // A
+  if (marks >= 70) return 3.2;      // B+
+  if (marks >= 60) return 2.8;      // B
+  if (marks >= 50) return 2.4;      // C+
+  if (marks >= 40) return 2.0;      // C
+  if (marks >= 35) return 1.6;      // D
+  return 0.0;                       // NG (Fail)
+}
+
+  function calculatePass(gpaObj){
+    for(const k in gpaObj){
+      if(gpaObj[k] === 0.0) return false;
+    }
+    return true;
+  }
+
+  function clearForm(){
+    form.reset();
+    document.getElementById('docId').value = '';
+    submitBtn.textContent = 'Add Student';
+  }
+
+  async function fetchStudents(){
+    studentsTableBody.innerHTML = 'Loading...';
+    const snapshot = await getDocs(collection(db, 'students'));
+    const students = [];
+    snapshot.forEach(doc => {
+      students.push({id: doc.id, ...doc.data()});
+    });
+    renderStudents(students);
+  }
+
+  function renderStudents(students){
+    if(students.length === 0){
+      studentsTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#666;">No students found.</td></tr>';
+      return;
+    }
+    studentsTableBody.innerHTML = '';
+    for(const student of students){
+      const tr = document.createElement('tr');
+      const passStatus = student.pass === true ? 'Yes' : 'No';
+
+      tr.innerHTML = `
+        <td>${student.studentId || ''}</td>
+        <td>${student.name || ''}</td>
+        <td>${student.rollNo || ''}</td>
+        <td>${passStatus}</td>
+        <td class="center">
+          <button class="edit-btn" data-id="${student.id}">Edit</button>
+          <button class="delete-btn" data-id="${student.id}">Delete</button>
+        </td>
+      `;
+
+      studentsTableBody.appendChild(tr);
+    }
+
+    // Attach events to edit/delete buttons
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-id');
+        editStudent(id);
+      };
+    });
+
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.getAttribute('data-id');
+        // Use SweetAlert2 confirm dialog
+        Swal.fire({
+          title: 'Are you sure?',
+          text: "This student record will be deleted!",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#3085d6',
+          cancelButtonColor: '#d33',
+          confirmButtonText: 'Yes, delete it!'
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            await deleteDoc(doc(db, 'students', id));
+            Swal.fire('Deleted!', 'Student record has been deleted.', 'success');
+            fetchStudents();
+          }
+        });
+      };
+    });
+  }
+
+  async function editStudent(id){
+    const docRef = doc(db, 'students', id);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      Swal.fire('Error', "Student not found!", 'error');
+      return;
+    }
+    const data = docSnap.data();
+
+    document.getElementById('docId').value = id;
+    document.getElementById('studentId').value = data.studentId || '';
+    document.getElementById('name').value = data.name || '';
+    document.getElementById('rollNo').value = data.rollNo || '';
+
+    for(const f of fields){
+      document.getElementById(f).value = data.marks && data.marks[f] !== undefined ? data.marks[f] : '';
+    }
+
+    submitBtn.textContent = 'Update Student';
+  }
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const studentId = document.getElementById('studentId').value.trim();
+    if(!studentId){
+      Swal.fire('Error', 'Student ID is required', 'error');
+      return;
+    }
+    const name = document.getElementById('name').value.trim();
+    const rollNo = document.getElementById('rollNo').value.trim();
+
+    const marks = {};
+    for(const f of fields){
+      const val = document.getElementById(f).value.trim();
+      marks[f] = val === '' ? null : Number(val);
+    }
+
+    // Calculate GPA object
+    const gpa = {};
+    for(const key in marks){
+      gpa[key] = marksToGPA(marks[key]);
+    }
+
+    const pass = calculatePass(gpa);
+
+    const studentData = {
+      studentId,
+      name,
+      rollNo,
+      marks,
+      gpa,
+      pass
+    };
+
+    try {
+      await setDoc(doc(db, 'students', studentId), studentData);
+      Swal.fire('Success', 'Student added/updated successfully', 'success');
+      clearForm();
+      fetchStudents();
+    } catch(err) {
+      Swal.fire('Error', 'Failed to save student data: ' + err.message, 'error');
+      console.error(err);
+    }
+  });
+
+  fetchStudents();
+</script>
+
+</body>
+</html>
+

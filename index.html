@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Student Result Search</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(to right,#6dd5fa,#2980b9 );
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .search-box {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    text-align: center;
+    width: 300px;
+  }
+  input {
+    width: 90%;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+  }
+  button {
+    background: #2980b9;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+  }
+  #resultBtn {
+    display: none;
+    margin-top: 10px;
+    background: green;
+  }
+</style>
+</head>
+<body>
+
+<div class="search-box">
+  <h2>Check Your Result</h2>
+  <input type="text" id="studentId" placeholder="Student ID *" required />
+  <input type="text" id="studentName" placeholder="Name (optional)" />
+  <input type="text" id="rollNo" placeholder="Roll No (optional)" />
+  <button id="searchBtn">Search</button>
+  <button id="resultBtn">View Result</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script type="module">
+// Firebase imports
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBHd_LMbxpMbshPjAqgKQwVT96gk2iShZU",
+  authDomain: "result-6567e.firebaseapp.com",
+  projectId: "result-6567e",
+  storageBucket: "result-6567e.firebasestorage.app",
+  messagingSenderId: "620047600761",
+  appId: "1:620047600761:web:bad47a88eb6e125d9e18a8"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const searchBtn = document.getElementById("searchBtn");
+const resultBtn = document.getElementById("resultBtn");
+
+searchBtn.addEventListener("click", async () => {
+  const studentId = document.getElementById("studentId").value.trim();
+
+  if (!studentId) {
+    Swal.fire("Error", "Please enter Student ID", "error");
+    return;
+  }
+
+  const docRef = doc(db, "students", studentId);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    const data = docSnap.data();
+    // Always show View Result button for both pass and fail
+    resultBtn.style.display = "block";
+    resultBtn.onclick = () => {
+      window.location.href = `result.html?id=${studentId}`;
+    };
+
+    if (data.pass) {
+      // Passed: show congrats popup + confetti
+      Swal.fire({
+        title: "Congratulations 🎉",
+        html: `<b>${data.name || "Student"}</b>, you have passed!`,
+        icon: "success",
+        timer: 3000,
+        timerProgressBar: true,
+        didOpen: () => {
+          const duration = 2 * 1000;
+          const end = Date.now() + duration;
+          (function frame() {
+            confetti({
+              particleCount: 5,
+              angle: 60,
+              spread: 55,
+              origin: { x: 0 }
+            });
+            confetti({
+              particleCount: 5,
+              angle: 120,
+              spread: 55,
+              origin: { x: 1 }
+            });
+            if (Date.now() < end) {
+              requestAnimationFrame(frame);
+            }
+          })();
+        }
+      });
+    }
+    // If fail: no popup or confetti, just show View Result button silently
+
+  } else {
+    // No record found
+    Swal.fire("Not Found", "No record found for this Student ID", "warning");
+    resultBtn.style.display = "none";
+  }
+});
+</script>
+</body>
+</html>
