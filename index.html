@@ -64,13 +64,16 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyBHd_LMbxpMbshPjAqgKQwVT96gk2iShZU",
   authDomain: "result-6567e.firebaseapp.com",
+  databaseURL: "https://result-6567e-default-rtdb.firebaseio.com",
   projectId: "result-6567e",
   storageBucket: "result-6567e.firebasestorage.app",
   messagingSenderId: "620047600761",
-  appId: "1:620047600761:web:bad47a88eb6e125d9e18a8"
+  appId: "1:620047600761:web:bad47a88eb6e125d9e18a8",
+  measurementId: "G-JGS9YE45NR"
 };
 
 const app = initializeApp(firebaseConfig);
